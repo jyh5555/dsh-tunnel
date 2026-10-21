@@ -1,0 +1,76 @@
+{
+  "name": "dsh-tunnel",
+  "version": "0.2.0",
+  "description": "Expose DeepSeek Harness (dsh web) through the tunnel you choose: Tailscale Funnel, Cloudflare Quick Tunnel, or any custom command. Zero runtime dependencies; handles dsh web's Host fence, session cookie, SSE and WebSocket, and keeps tunnel control local to the host.",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "deepseek",
+    "tunnel",
+    "remote-access",
+    "cloudflare-tunnel",
+    "tailscale",
+    "reverse-proxy",
+    "self-hosted"
+  ],
+  "license": "MIT",
+  "author": "dsh-tunnel contributors",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README.en.md",
+    "SECURITY.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/proxy.test.js test/config.test.js test/providers.test.js test/security.test.js",
+    "test:e2e": "node test/e2e-viewer.mjs",
+    "test:real": "node test/e2e-real-dsh.mjs",
+    "test:attacks": "node test/attack-scenarios.mjs",
+    "test:client": "node test/client-contract.mjs",
+    "test:integration": "node test/integration.mjs",
+    "test:live": "node test/provider-live.mjs",
+    "test:all": "npm test && npm run test:e2e && npm run test:attacks && npm run test:client && npm run test:integration",
+    "check": "npm run test:all"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jyh5555/dsh-tunnel.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jyh5555/dsh-tunnel/issues"
+  },
+  "homepage": "https://github.com/jyh5555/dsh-tunnel#readme",
+  "engines": {
+    "node": ">=20"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "external": [
+        "react",
+        "react/jsx-runtime"
+      ]
+    }
+  }
+}

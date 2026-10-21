@@ -1,0 +1,22 @@
+# dsh-tunnel —— 捆绑层（bundle layer）。
+#
+# 只有一行。下面这些默认值是「安全的那一组」：在用户去设置面板里选一个提供者
+# 之前，什么都不会启动。因为一条隧道等于把这台机器开放给公网，
+# 这件事绝不应该成为安装的副作用。
+- insert:
+    - id: dsh-tunnel
+      name: dsh-tunnel
+      config:
+        # provider: 'off' | 'cloudflared' | 'tailscale' | 'custom'
+        provider: 'off'
+        # 反向代理监听的端口。8443 是 Tailscale Funnel 接受的三个端口之一
+        # （443 / 8443 / 10000），所以同一个值在所有提供者下都能用。
+        port: 8443
+        # 绑定地址。保持回环：隧道是从本机连到代理的，没有理由监听网络。
+        host: '127.0.0.1'
+        # 留空 = 首次启动时生成。想固定密钥就自己填一个。
+        accessKey: ''
+        # 各提供者的专属参数，字段含义见 README。
+        cloudflared: {}
+        tailscale: {}
+        custom: {}

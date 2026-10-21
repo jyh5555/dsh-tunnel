@@ -1,0 +1,25 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# logs and diagnostics
+*.log
+npm-debug.log*
+proxy.out
+proxy.err
+
+# editor and OS noise
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# local experiment leftovers: ad-hoc probes, captured output, screenshots
+test/_*.mjs
+*.local.md
+*.tmpprobe
+*.corrupted
+*.bak
+
+# package artefacts
+*.tgz

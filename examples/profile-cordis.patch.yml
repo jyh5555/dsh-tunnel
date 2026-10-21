@@ -1,0 +1,15 @@
+# dsh-tunnel：给 dsh web 开一个公网入口，隧道用哪一个由你决定。
+#
+# 把这段追加到你 profile 的 cordis.patch.yml（~/.dsh/profiles/<名字>/cordis.patch.yml）。
+# 如果你是用 `dsh plugin install` 装的，捆绑层已经带了一行默认配置，
+# 这里只是为了让你覆盖它。
+#
+# provider 默认是 'off'，所以在你去「设置 → 隧道」里选一个之前，装上它不会有任何变化。
+# port 8443 同时是代理的监听端口和 Tailscale Funnel 接受的端口，隧道指向它即可。
+- id: dsh-tunnel
+  name: dsh-tunnel
+  config:
+    provider: "off"
+    port: 8443
+    host: "127.0.0.1"
+    accessKey: ""

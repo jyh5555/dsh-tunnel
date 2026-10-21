@@ -1,0 +1,21 @@
+# Normalise line endings on commit so the repo is identical for everyone.
+# Without this, Windows checks out CRLF and the next commit rewrites every line,
+# which turns a one-line fix into a whole-file diff.
+* text=auto eol=lf
+
+# Shell-ish files must stay LF even on Windows: CRLF in a shebang script or a
+# .bat wrapper is a bug, not a preference.
+*.sh   text eol=lf
+*.mjs  text eol=lf
+*.js   text eol=lf
+*.yml  text eol=lf
+*.json text eol=lf
+
+# Markdown is fine either way but LF keeps diffs honest.
+*.md   text eol=lf
+
+# Binary: never touch.
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.tgz  binary
