@@ -21,7 +21,7 @@ test('empty input yields every default', () => {
   assert.equal(value.accessKey, '')
   assert.deepEqual(value.cloudflared, { path: '', extraArgs: [] })
   assert.deepEqual(value.tailscale, { path: '', port: 8443, hostname: '' })
-  assert.deepEqual(value.custom, { command: '', args: [] })
+  assert.deepEqual(value.custom, { command: '', args: [], url: '' })
 })
 
 test('undefined input is treated as empty', () => {

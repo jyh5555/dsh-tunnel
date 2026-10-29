@@ -74,9 +74,18 @@ expose publicly.**
   timed out "awaiting headers"; with Go resolving on its own, the same binary
   registered a QUIC connection. Recorded as a mitigation, not a diagnosed fix:
   that network was intermittent, and later attempts succeeded without it.
+- The tunnel child is now supervised. `startTunnel` stopped listening for `exit`
+  as soon as it had a URL to report, which is correct for a promise and wrong for
+  a feature: `ssh -N -R` never reconnects, Windows ships no `autossh`, and one
+  dropped connection left the tunnel down for good. The plugin now keeps the exit:
+  the panel drops back to 「未对外开放」, the reason stays visible, and the tunnel is
+  retried on a 5s / 15s / 30s / 60s ladder that resets after a minute of uptime. A
+  deliberate stop cancels the ladder. A *boot-time* failure is retried too, because
+  boot is exactly when the network is least ready.
 - Test suites: `test/security.test.js`, `test/e2e-viewer.mjs`,
   `test/e2e-real-dsh.mjs` (real `dsh web`), `test/attack-scenarios.mjs`,
-  `test/client-contract.mjs`, `test/smoke-after-restart.mjs`.
+  `test/client-contract.mjs`, `test/smoke-after-restart.mjs`,
+  `test/supervision.mjs` (boots the real `apply()` and kills the child on purpose).
   `npm run test:all` runs everything.
 
 ### Changed
@@ -96,6 +105,13 @@ expose publicly.**
   contract is documented in the README instead.
 
 ### Fixed
+
+- A dead tunnel still displayed 「已对外开放」. `publicUrl` came from the configured
+  address, and `state.tunnel` was only cleared by an explicit stop, so after the
+  child exited the panel described a process that no longer existed — for hours,
+  in the case that prompted the supervisor above. A provider is now only reported
+  as running while its child is alive, and the snapshot carries an explicit
+  `tunnelUp` flag so nothing has to infer liveness from a URL string.
 
 - The sidebar panel could not scroll on a phone. `main` panels are mounted in a
   flex column with `overflow: hidden`, so the panel has to be its own scroll

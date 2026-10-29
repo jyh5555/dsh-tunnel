@@ -43,8 +43,9 @@
     "test:attacks": "node test/attack-scenarios.mjs",
     "test:client": "node test/client-contract.mjs",
     "test:integration": "node test/integration.mjs",
+    "test:supervision": "node test/supervision.mjs",
     "test:live": "node test/provider-live.mjs",
-    "test:all": "npm test && npm run test:e2e && npm run test:attacks && npm run test:client && npm run test:integration",
+    "test:all": "npm test && npm run test:e2e && npm run test:attacks && npm run test:client && npm run test:supervision && npm run test:integration",
     "check": "npm run test:all"
   },
   "repository": {

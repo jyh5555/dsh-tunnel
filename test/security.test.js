@@ -13,7 +13,7 @@ import assert from 'node:assert/strict'
 import http from 'node:http'
 
 import { createProxy, TUNNEL_HOP_HEADER, ACCESS_COOKIE } from '../lib/proxy.js'
-import { sanitizeCustomSettings, redactSnapshot } from '../lib/index.js'
+import { sanitizeCustomSettings, redactSnapshot, rememberProxy, reclaimProxy, forgetProxy } from '../lib/index.js'
 
 /**
  * Upstream that records what it received and answers with that record.
@@ -40,9 +40,17 @@ async function startProxy(upstreamPort, accessKey = 'k') {
   return { proxy, port: proxy.address().port }
 }
 
-function request(port, path, headers = {}) {
+/**
+ * One request, GET by default.
+ * @param {number} port
+ * @param {string} path
+ * @param {object} [options] - `headers`, or `{ method, headers, body }`.
+ */
+function request(port, path, options = {}) {
+  const opts = options && (options.method || options.body) ? options : { headers: options }
+  const { method = 'GET', headers = {}, body } = opts
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: '127.0.0.1', port, path, headers }, (res) => {
+    const req = http.request({ host: '127.0.0.1', port, path, method, headers }, (res) => {
       const chunks = []
       res.on('data', (c) => chunks.push(c))
       res.on('end', () =>
@@ -50,6 +58,7 @@ function request(port, path, headers = {}) {
       )
     })
     req.on('error', reject)
+    if (body) req.write(body)
     req.end()
   })
 }
@@ -285,6 +294,89 @@ test('redactSnapshot does not mutate its input', () => {
   assert.deepEqual(full.config.custom.args, ['local', '8443', '--secret=SECRET-TOKEN'])
 })
 
+// ── the Secure cookie attribute ─────────────────────────────────────────────
+// A browser silently drops a `Secure` cookie delivered over plain HTTP, so a
+// deployment on `http://<vps-ip>:<port>` would sign in, lose the cookie, and
+// bounce back to the form — indistinguishable from a wrong password. The
+// attribute therefore follows the browser's origin, which a reverse proxy states
+// in `X-Forwarded-Proto`.
+
+/** POST the key to the sign-in form and return the response. */
+function signIn(port, extraHeaders = {}) {
+  const body = 'key=k'
+  return request(port, '/__tunnel', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/x-www-form-urlencoded',
+      'content-length': String(Buffer.byteLength(body)),
+      ...extraHeaders,
+    },
+    body,
+  })
+}
+
+test('the session cookie is Secure by default', async () => {
+  const up = await recordingUpstream()
+  const { proxy, port } = await startProxy(up.port)
+  try {
+    const res = await signIn(port)
+    assert.equal(res.status, 303)
+    const cookie = res.headers['set-cookie'][0]
+    assert.match(cookie, /; Secure;/)
+    assert.match(cookie, /HttpOnly/)
+    assert.match(cookie, /SameSite=Lax/)
+    assert.match(cookie, /Max-Age=43200/)
+  } finally {
+    await new Promise((r) => proxy.close(r))
+    await new Promise((r) => up.server.close(r))
+  }
+})
+
+test('the session cookie drops Secure when the origin is http', async () => {
+  const up = await recordingUpstream()
+  const { proxy, port } = await startProxy(up.port)
+  try {
+    const res = await signIn(port, { 'x-forwarded-proto': 'http' })
+    assert.equal(res.status, 303)
+    const cookie = res.headers['set-cookie'][0]
+    assert.equal(/; Secure;/.test(cookie), false, 'Secure must be omitted over plain http')
+    // The other protections are unaffected.
+    assert.match(cookie, /HttpOnly/)
+    assert.match(cookie, /SameSite=Lax/)
+  } finally {
+    await new Promise((r) => proxy.close(r))
+    await new Promise((r) => up.server.close(r))
+  }
+})
+
+test('a chained X-Forwarded-Proto is read from its first element', async () => {
+  const up = await recordingUpstream()
+  const { proxy, port } = await startProxy(up.port)
+  try {
+    // "https, http" means the browser spoke https to the nearest hop.
+    const res = await signIn(port, { 'x-forwarded-proto': 'https, http' })
+    assert.match(res.headers['set-cookie'][0], /; Secure;/, 'the nearest hop decides')
+  } finally {
+    await new Promise((r) => proxy.close(r))
+    await new Promise((r) => up.server.close(r))
+  }
+})
+
+test('the legacy ?key= path sets the same cookie as the form', async () => {
+  // Two ways in must not produce two different session shapes.
+  const up = await recordingUpstream()
+  const { proxy, port } = await startProxy(up.port)
+  try {
+    const viaQuery = await request(port, '/?key=k')
+    const viaForm = await signIn(port)
+    const strip = (c) => c.split(';').map((s) => s.trim()).filter((s) => s !== 'Path=/')
+    assert.deepEqual(strip(viaQuery.headers['set-cookie'][0]), strip(viaForm.headers['set-cookie'][0]))
+  } finally {
+    await new Promise((r) => proxy.close(r))
+    await new Promise((r) => up.server.close(r))
+  }
+})
+
 // ── P1: failed-attempt throttle ─────────────────────────────────────────────
 
 test('repeated wrong keys are throttled with 429 and Retry-After', async () => {
@@ -342,6 +434,72 @@ test('a throttled client is refused before the key is even compared', async () =
     assert.equal(res.status, 429, 'even the correct key waits out the window')
   } finally {
     await new Promise((r) => proxy.close(r))
+    await new Promise((r) => up.server.close(r))
+  }
+})
+
+// ── the port a reloaded plugin must be able to reclaim ──────────────────────
+// Observed on a live install: reloading the plugin left the previous instance's
+// listener bound, the new instance failed with EADDRINUSE against its own port,
+// and the *old* proxy kept answering with the *old* access key. From the outside
+// that reads as "the key is wrong", which is the worst possible symptom.
+
+test('a leftover listener can be reclaimed by the next instance', async () => {
+  const up = await recordingUpstream()
+
+  // The previous instance's listener, still bound and still holding connections.
+  const stale = createProxy({ upstream: `http://127.0.0.1:${up.port}`, accessKey: () => 'old' })
+  await new Promise((resolve) => stale.listen(0, '127.0.0.1', resolve))
+  const port = stale.address().port
+  rememberProxy(port, stale)
+
+  // A long-lived connection, exactly like the WebSocket this proxy relays.
+  const keepAlive = await authorisedCookie(port, 'old')
+  const held = http.request({ host: '127.0.0.1', port, path: '/api/remote.mux', headers: { cookie: keepAlive } })
+  held.on('error', () => {})
+  held.end()
+
+  try {
+    assert.equal(reclaimProxy(port), true, 'the registry should have had it')
+
+    // The port must now be bindable — this is the whole point.
+    const fresh = createProxy({ upstream: `http://127.0.0.1:${up.port}`, accessKey: () => 'new' })
+    await new Promise((resolve, reject) => {
+      fresh.once('error', reject)
+      fresh.listen(port, '127.0.0.1', resolve)
+    })
+
+    // And it answers with the new key, not the leaked old one.
+    const res = await request(port, '/?key=new')
+    assert.equal(res.status, 303, 'the new instance must serve the new key')
+    assert.equal((await request(port, '/?key=old')).status, 401, 'the old key must be gone')
+
+    await new Promise((r) => fresh.close(r))
+    forgetProxy(port, fresh)
+  } finally {
+    await new Promise((r) => up.server.close(r))
+  }
+})
+
+test('reclaiming a port this plugin never held is a no-op', () => {
+  // Closing a socket we did not open would mean killing an unrelated service.
+  // "Port busy" is a far better outcome than that.
+  assert.equal(reclaimProxy(1), false)
+  assert.equal(reclaimProxy(65535), false)
+})
+
+test('forgetting only drops the server it was told about', async () => {
+  const up = await recordingUpstream()
+  const server = createProxy({ upstream: `http://127.0.0.1:${up.port}`, accessKey: () => 'k' })
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+  const port = server.address().port
+  try {
+    rememberProxy(port, server)
+    // A different server object must not evict the recorded one.
+    forgetProxy(port, { close() {} })
+    assert.equal(reclaimProxy(port), true, 'the real one was still registered')
+    assert.equal(reclaimProxy(port), false, 'and is gone now')
+  } finally {
     await new Promise((r) => up.server.close(r))
   }
 })

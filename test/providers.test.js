@@ -92,6 +92,50 @@ test('custom provider substitutes {port}', () => {
   assert.deepEqual(prepared.args, ['local', '9000', '--to', 'bore.pub'])
 })
 
+// ── custom.url: tunnels that cannot print their own address ─────────────────
+// `ssh -R` and `frpc` say nothing on stdout, so the "print the URL" contract made
+// the self-hosted VPS path — a server you already pay for — unreachable.
+
+test('a declared custom.url is passed through and normalised', () => {
+  const prepared = PROVIDERS.get('custom').prepare({
+    port: 8443,
+    config: {
+      command: 'ssh',
+      args: ['-N', '-R', '8080:127.0.0.1:8443', 'root@198.51.100.7'],
+      url: 'https://47.93.123.174.nip.io/',
+    },
+  })
+  assert.equal(prepared.error, undefined)
+  assert.equal(prepared.url, 'https://47.93.123.174.nip.io', 'trailing slash trimmed')
+  assert.deepEqual(prepared.args.slice(0, 3), ['-N', '-R', '8080:127.0.0.1:8443'])
+})
+
+test('a plain-http custom.url is refused', () => {
+  // The access key travels in the sign-in form; http would put it on the wire.
+  const prepared = PROVIDERS.get('custom').prepare({
+    port: 8443,
+    config: { command: 'ssh', args: [], url: 'http://47.93.123.174:8080' },
+  })
+  assert.match(prepared.error, /https/)
+})
+
+test('a malformed custom.url is refused rather than half-accepted', () => {
+  const prepared = PROVIDERS.get('custom').prepare({
+    port: 8443,
+    config: { command: 'ssh', args: [], url: 'not a url' },
+  })
+  assert.match(prepared.error, /not a valid URL/)
+})
+
+test('no custom.url leaves the print-the-URL behaviour intact', () => {
+  const prepared = PROVIDERS.get('custom').prepare({
+    port: 8443,
+    config: { command: 'bore', args: ['local', '8443'] },
+  })
+  assert.equal(prepared.error, undefined)
+  assert.equal(prepared.url, undefined)
+})
+
 test('cloudflared provider points at the proxy port', () => {
   const prepared = PROVIDERS.get('cloudflared').prepare({
     port: 8443,
