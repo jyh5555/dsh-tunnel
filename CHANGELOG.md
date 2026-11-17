@@ -52,6 +52,14 @@ expose publicly.**
 
 ### Added
 
+- The on-screen keyboard no longer covers the message composer. A phone browser
+  keeps the layout viewport full height and paints the keyboard over it, so an
+  input pinned to the bottom of a `100%` layout ends up underneath and the user
+  types blind. The proxy appends `interactive-widget=resizes-content` to the
+  document's viewport tag (Chrome 108+), which makes the layout shrink with the
+  keyboard. Only the document is buffered and rewritten — compress-encoded
+  documents and every other response still stream through untouched, and that
+  distinction has its own tests.
 - The page can be installed as an app. dsh web's manifest declares no `icons`, so
   Chromium refuses to install it — and says only 「无法安装此应用」, with the real
   reason (`manifest-missing-suitable-icon`, minimum 144px) visible only through the
