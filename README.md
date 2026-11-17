@@ -363,6 +363,24 @@ cloudflared 自己会重连，但插件同样跟踪它的进程：它卡在重�
 通常是 WebSocket 的扩展头被中间某层吃掉了。如果你用的是自定义命令，确认那条链路上
 没有会改写 HTTP 头的代理。
 
+还有一种很隐蔽的情况：**你在隧道前面又加了一层 HTTP Basic 认证**（Caddy 的
+`basic_auth`、nginx 的 `auth_basic`）。页面能打开，但 dsh web 的实时通道是一条
+WebSocket（`wss://…/api/remote.mux`），而 Chrome 在 WebSocket 握手时不复用已经持有的
+HTTP 认证凭据 —— 握手请求没有 `Authorization`，被那一层挡成 401，页面就永远停在
+「正在重新连接」。Yandex 这类浏览器会带上凭据，所以在那边看着一切正常。
+
+隧道自己不需要那层认证，它已经要求访问密钥。让升级请求绕过 Basic 认证即可。Caddy 里
+放在 `basic_auth` 所在 `handle` 之前：
+
+```
+@ws header Upgrade *websocket*
+handle @ws {
+	reverse_proxy 127.0.0.1:18080
+}
+```
+
+验证方式：不带隧道密钥握手应该拿到 401，带上密钥应该拿到 101。
+
 **改了插件代码，远程没反应**
 
 Quick Tunnel 不支持 SSE。用 Tailscale，或者重启 dsh web。
