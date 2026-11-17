@@ -1,38 +1,47 @@
 {
-  "version": 1,
+  "format": 1,
   "title": "dsh-tunnel",
-  "description": "Community index for dsh-tunnel. Add this URL under Settings -> Plugin market -> Indexes.",
-  "updatedAt": "2026-10-21T00:00:00Z",
+  "description": "Index for dsh-tunnel. Add this file's raw URL under Plugins -> Discover -> index sources.",
+  "metadata": {
+    "categories": {
+      "connectivity": {
+        "title": {
+          "en": "Connectivity",
+          "zh": "连接"
+        }
+      }
+    }
+  },
   "plugins": [
     {
       "name": "dsh-tunnel",
-      "displayName": "dsh-tunnel",
-      "summary": "Expose dsh web through the tunnel you choose: Tailscale Funnel, Cloudflare Quick Tunnel, or any custom command. No account, no relay server.",
-      "description": "dsh web binds to loopback and its /api fence rejects foreign Host headers, so a tunnel alone returns 403 everywhere. This plugin runs a small reverse proxy that performs the four rewrites dsh web requires (Host, Origin/sec-fetch, session cookie, verbatim /plugins/?? paths), then lets you pick how traffic reaches it: Tailscale Funnel for a permanent hostname with SSE, Cloudflare Quick Tunnel for a zero-config public URL, a custom command for anything else, or nothing at all. Tunnel control stays local: a visitor holding the access key can use dsh web but cannot stop the tunnel or change its configuration.",
+      "title": "dsh-tunnel",
+      "description": "Expose dsh web through the tunnel you choose: Tailscale Funnel, Cloudflare Quick Tunnel, or any custom command. dsh web binds to loopback and its /api fence rejects foreign Host headers, so a bare tunnel answers 403 everywhere; this plugin runs the small reverse proxy that performs the rewrites it needs, then gets out of the way.",
       "author": "dsh-tunnel contributors",
-      "license": "MIT",
       "homepage": "https://github.com/jyh5555/dsh-tunnel",
-      "repository": "https://github.com/jyh5555/dsh-tunnel",
-      "keywords": [
-        "dsh-plugin",
-        "deepseek-harness",
-        "tunnel",
-        "remote-access",
-        "cloudflare-tunnel",
-        "tailscale",
-        "reverse-proxy"
-      ],
-      "category": "connectivity",
+      "repository": {
+        "url": "https://github.com/jyh5555/dsh-tunnel"
+      },
+      "metadata": {
+        "category": "connectivity",
+        "keywords": [
+          "dsh-plugin",
+          "deepseek-harness",
+          "tunnel",
+          "remote-access",
+          "cloudflare-tunnel",
+          "tailscale",
+          "reverse-proxy"
+        ]
+      },
       "versions": [
         {
           "version": "0.2.0",
-          "publishedAt": "2026-10-21T00:00:00Z",
-          "engines": {
-            "node": ">=20"
-          },
-          "install": {
-            "registry": "npm",
-            "spec": "dsh-tunnel@0.2.0"
+          "publishTimestamp": 1794925365,
+          "source": {
+            "type": "git",
+            "url": "https://github.com/jyh5555/dsh-tunnel",
+            "commit": "22e03742a42200322f863ee44c17da1d977ce2b9"
           }
         }
       ]
