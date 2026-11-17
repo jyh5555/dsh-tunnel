@@ -52,6 +52,15 @@ expose publicly.**
 
 ### Added
 
+- The page can be installed as an app. dsh web's manifest declares no `icons`, so
+  Chromium refuses to install it — and says only 「无法安装此应用」, with the real
+  reason (`manifest-missing-suitable-icon`, minimum 144px) visible only through the
+  DevTools protocol. The proxy now publishes its own manifest and draws the 192,
+  512 and maskable-512 PNGs at runtime with `node:zlib`, so no binary asset is
+  added. Verified against the engine itself: `Page.getInstallabilityErrors` went
+  from two errors to none. Both the manifest and the icons answer without the
+  access cookie, because Chrome fetches them credential-less by spec; a test
+  asserts that, and that an undeclared path still needs the key.
 - `SECURITY.md` documenting the viewer/operator model, the threat model, and
   what is deliberately *not* protected.
 - A read-only panel view. Reached through the tunnel, the panel says so and

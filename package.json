@@ -37,7 +37,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node --test test/proxy.test.js test/config.test.js test/providers.test.js test/security.test.js",
+    "test": "node --test test/proxy.test.js test/config.test.js test/providers.test.js test/security.test.js test/pwa.test.js",
     "test:e2e": "node test/e2e-viewer.mjs",
     "test:real": "node test/e2e-real-dsh.mjs",
     "test:attacks": "node test/attack-scenarios.mjs",
