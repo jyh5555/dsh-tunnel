@@ -60,6 +60,12 @@ expose publicly.**
   keyboard. Only the document is buffered and rewritten — compress-encoded
   documents and every other response still stream through untouched, and that
   distinction has its own tests.
+  That alone lifted the composer by only part of the keyboard: Chrome's visual
+  viewport stops above the suggestion strip, and a layout that measured the window
+  once at load never moves. So the client bundle also measures the difference on
+  `visualViewport` resize, applies it to `<body>`'s height (restoring the app's own
+  inline value afterwards) and scrolls the focused field into view — both no-ops on
+  a desktop, where `(pointer: coarse)` does not match.
 - The page can be installed as an app. dsh web's manifest declares no `icons`, so
   Chromium refuses to install it — and says only 「无法安装此应用」, with the real
   reason (`manifest-missing-suitable-icon`, minimum 144px) visible only through the
